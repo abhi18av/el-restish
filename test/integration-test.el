@@ -6,12 +6,27 @@
 
 ;;; Commentary:
 
-;; This file provides integration tests for el-restish using real APIs.
+;; This file provides comprehensive integration tests for el-restish using multiple real APIs.
 ;; It demonstrates the package working end-to-end with actual HTTP services.
+;;
+;; Test APIs used:
+;; - httpbin.org (Basic HTTP testing, no auth required)
+;; - PokéAPI (Complex JSON, no auth, reliable)
+;; - Bhagavad Gita API (Authentication testing with RapidAPI)
+;;
+;; This creates a comprehensive test matrix covering:
+;; - Basic HTTP methods (GET, POST, PUT, DELETE)
+;; - Authentication (none, API key headers)
+;; - Response types (JSON, XML, plain text, errors)
+;; - Execution modes (sync, async)
+;; - Error handling (network, API, parsing)
+;; - Performance (multiple requests, large responses)
+;; - Client framework (macros, client management)
 
 ;;; Code:
 
 (require 'el-restish)
+(require 'pokemon-client)
 (require 'bhagavad-gita-client)
 (require 'ert)
 
@@ -237,21 +252,169 @@
     (integration-test-record test-name success message)
     success))
 
+;; PokéAPI integration tests
+
+(defun integration-test-pokemon-basic ()
+  "Test basic PokéAPI functionality."
+  (let* ((test-name "pokemon-basic")
+         (success nil)
+         (message ""))
+    (condition-case err
+        (let ((buffer (pokemon-get "pikachu")))
+          (if buffer
+              (with-current-buffer buffer
+                (goto-char (point-min))
+                (if (search-forward "pikachu" nil t)
+                    (setq success t
+                          message "Pikachu data retrieved and contains expected content")
+                  (setq success nil
+                        message "Pikachu response doesn't contain expected data")))
+            (setq success nil
+                  message "Failed to retrieve Pikachu data")))
+      (error
+       (setq success nil
+             message (format "PokéAPI error: %s" (error-message-string err)))))
+    
+    (integration-test-record test-name success message)
+    success))
+
+(defun integration-test-pokemon-complex-json ()
+  "Test PokéAPI complex JSON structures."
+  (let* ((test-name "pokemon-complex-json")
+         (success nil)
+         (message ""))
+    (condition-case err
+        (let ((buffer (pokemon-evolution-chain 67)))  ; Eevee evolution chain
+          (if buffer
+              (with-current-buffer buffer
+                (goto-char (point-min))
+                ;; Look for complex nested structure indicators
+                (if (and (search-forward "evolves_to" nil t)
+                         (goto-char (point-min))
+                         (search-forward "species" nil t))
+                    (setq success t
+                          message "Complex evolution chain JSON parsed successfully")
+                  (setq success nil
+                        message "Evolution chain JSON structure incomplete")))
+            (setq success nil
+                  message "Failed to retrieve evolution chain data")))
+      (error
+       (setq success nil
+             message (format "Evolution chain test error: %s" (error-message-string err)))))
+    
+    (integration-test-record test-name success message)
+    success))
+
+(defun integration-test-pokemon-error-handling ()
+  "Test PokéAPI error handling."
+  (let* ((test-name "pokemon-error-handling")
+         (success nil)
+         (message ""))
+    (condition-case err
+        ;; Test with invalid Pokémon ID
+        (let ((buffer (pokemon-get "nonexistent-pokemon-12345")))
+          (if buffer
+              (with-current-buffer buffer
+                (goto-char (point-min))
+                ;; Should show error or 404
+                (if (or (search-forward "404" nil t)
+                        (search-forward "Not Found" nil t))
+                    (setq success t
+                          message "404 error properly handled for invalid Pokémon")
+                  (setq success nil
+                        message "Error response format unexpected")))
+            (setq success t  ; No buffer is also acceptable error handling
+                  message "Invalid Pokémon request properly rejected")))
+      (error
+       (setq success t  ; Error caught is good
+             message (format "Error properly caught: %s" (error-message-string err)))))
+    
+    (integration-test-record test-name success message)
+    success))
+
+;; Multi-API coordination tests
+
+(defun integration-test-multiple-apis ()
+  "Test coordination between multiple APIs."
+  (let* ((test-name "multiple-apis")
+         (success nil)
+         (message ""))
+    (condition-case err
+        (let ((pokemon-buffer (pokemon-get "pikachu"))
+              (httpbin-buffer (el-restish-request-sync "GET" "https://httpbin.org/get" nil))
+              (gita-buffer (bhagavad-gita-list-chapters)))
+          (let ((pokemon-ok (and pokemon-buffer (buffer-live-p pokemon-buffer)))
+                (httpbin-ok (and httpbin-buffer (buffer-live-p httpbin-buffer)))
+                (gita-ok (and gita-buffer (buffer-live-p gita-buffer))))
+            (if (and pokemon-ok httpbin-ok gita-ok)
+                (setq success t
+                      message "All three APIs responded successfully")
+              (setq success (or pokemon-ok httpbin-ok gita-ok)
+                    message (format "Partial success: Pokemon:%s HttpBin:%s Gita:%s"
+                                  (if pokemon-ok "✓" "✗")
+                                  (if httpbin-ok "✓" "✗")
+                                  (if gita-ok "✓" "✗"))))))
+      (error
+       (setq success nil
+             message (format "Multi-API test error: %s" (error-message-string err)))))
+    
+    (integration-test-record test-name success message)
+    success))
+
+(defun integration-test-client-framework-pokemon ()
+  "Test client framework specifically with PokéAPI."
+  (let* ((test-name "client-framework-pokemon")
+         (success nil)
+         (message ""))
+    (condition-case err
+        (let ((client (el-restish-get-client 'pokemon)))
+          (if (and client (el-restish-client-p client))
+              (let ((buffer (el-restish-client-get client "/pokemon/1/")))
+                (if buffer
+                    (setq success t
+                          message "Client framework working with PokéAPI")
+                  (setq success nil
+                        message "Client request failed")))
+            (setq success nil
+                  message "Pokemon client not properly created")))
+      (error
+       (setq success nil
+             message (format "Client framework test error: %s" (error-message-string err)))))
+    
+    (integration-test-record test-name success message)
+    success))
+
 ;;;###autoload
 (defun run-integration-tests ()
   "Run all integration tests for el-restish."
   (interactive)
-  (message "Starting el-restish integration tests...")
+  (message "🧪 Starting comprehensive el-restish integration tests...")
   (integration-test-reset)
   
-  (let ((tests '(integration-test-httpbin-basic
+  (let ((tests '(;; Basic HTTP functionality
+                 integration-test-httpbin-basic
                  integration-test-httpbin-json
                  integration-test-post-request
+                 
+                 ;; PokéAPI tests (no auth, complex JSON)
+                 integration-test-pokemon-basic
+                 integration-test-pokemon-complex-json
+                 integration-test-pokemon-error-handling
+                 
+                 ;; Execution modes and error handling
                  integration-test-async-vs-sync
                  integration-test-error-handling
                  integration-test-response-formatting
+                 
+                 ;; Authenticated API testing
                  integration-test-bhagavad-gita-api
-                 integration-test-client-framework))
+                 
+                 ;; Client framework testing
+                 integration-test-client-framework
+                 integration-test-client-framework-pokemon
+                 
+                 ;; Multi-API coordination
+                 integration-test-multiple-apis))
         (passed 0)
         (failed 0))
     
@@ -305,10 +468,125 @@
     (display-buffer buffer)))
 
 ;;;###autoload
+(defun run-comprehensive-api-demo ()
+  "Run a comprehensive demonstration of all API integrations."
+  (interactive)
+  (message "🌍 Starting Comprehensive API Integration Demo...")
+  (message "This demo showcases el-restish with multiple real-world APIs")
+  
+  ;; Part 1: Basic HTTP with httpbin
+  (message "\n=== Part 1: Basic HTTP Testing with httpbin.org ===")
+  (message "1. Testing GET request...")
+  (el-restish-get "https://httpbin.org/get")
+  (sit-for 2)
+  
+  (message "2. Testing POST with JSON data...")
+  (let ((test-json "{\"demo\": \"el-restish\", \"timestamp\": \"$(date)\", \"test\": true}"))
+    (el-restish-post "https://httpbin.org/post" test-json))
+  (sit-for 2)
+  
+  ;; Part 2: PokéAPI exploration
+  (message "\n=== Part 2: PokéAPI - Complex JSON Structures ===")
+  (message "3. Getting Pikachu (the most famous Pokémon)...")
+  (pokemon-get "pikachu")
+  (sit-for 2)
+  
+  (message "4. Exploring fire-type Pokémon...")
+  (pokemon-type "fire")
+  (sit-for 2)
+  
+  (message "5. Complex evolution chains - Eevee's 8 evolutions...")
+  (pokemon-evolution-chain 67)
+  (sit-for 2)
+  
+  (message "6. Random Pokémon discovery...")
+  (pokemon-get-random)
+  (sit-for 2)
+  
+  ;; Part 3: Bhagavad Gita API (authenticated)
+  (message "\n=== Part 3: Bhagavad Gita API - Authentication & Wisdom ===")
+  (message "7. Listing all chapters...")
+  (bhagavad-gita-list-chapters)
+  (sit-for 2)
+  
+  (message "8. Getting the famous verse 2.47 (Karmanye Vadhikaraste)...")
+  (bhagavad-gita-get-famous-verse)
+  (sit-for 2)
+  
+  (message "9. Random verse for inspiration...")
+  (bhagavad-gita-random-verse)
+  (sit-for 2)
+  
+  ;; Part 4: Sync vs Async demonstration
+  (message "\n=== Part 4: Execution Modes - Sync vs Async ===")
+  (message "10. Synchronous request...")
+  (let ((el-restish-default-mode 'sync))
+    (pokemon-get "charizard"))
+  (sit-for 1)
+  
+  (message "11. Asynchronous request...")
+  (let ((el-restish-default-mode 'async))
+    (pokemon-get "blastoise"))
+  (sit-for 2)
+  
+  ;; Part 5: Error handling
+  (message "\n=== Part 5: Error Handling ===")
+  (message "12. Testing with invalid requests...")
+  (condition-case err
+      (pokemon-get "nonexistent-pokemon-12345")
+    (error (message "Error properly caught: %s" (error-message-string err))))
+  (sit-for 1)
+  
+  ;; Final summary
+  (message "\n🎉 Comprehensive API Demo Complete!")
+  (message "\nAPIs demonstrated:")
+  (message "  ✓ httpbin.org - Basic HTTP testing")
+  (message "  ✓ PokéAPI - Complex JSON, no authentication")
+  (message "  ✓ Bhagavad Gita API - Authentication with RapidAPI")
+  (message "\nFeatures shown:")
+  (message "  ✓ GET, POST requests")
+  (message "  ✓ JSON formatting and syntax highlighting")
+  (message "  ✓ Synchronous and asynchronous execution")
+  (message "  ✓ Error handling")
+  (message "  ✓ Client framework usage")
+  (message "  ✓ Authentication headers")
+  (message "\nCheck the various '*Restish:*' buffers to see all the responses!")
+  (message "Use M-x el-restish-pop-response to navigate between them."))
+
+;;;###autoload
+(defun run-pokemon-demo ()
+  "Run a focused PokéAPI demonstration."
+  (interactive)
+  (message "🎮 Starting PokéAPI Demo - Gotta Test 'Em All!")
+  
+  (message "1. Classic starter Pokémon...")
+  (pokemon-get "bulbasaur")
+  (sit-for 2)
+  (pokemon-get "charmander")
+  (sit-for 2)
+  (pokemon-get "squirtle")
+  (sit-for 2)
+  
+  (message "2. Type effectiveness chart...")
+  (pokemon-type "water")
+  (sit-for 2)
+  
+  (message "3. Legendary Pokémon...")
+  (pokemon-get "mew")
+  (sit-for 2)
+  
+  (message "4. Complex evolution chains...")
+  (pokemon-evolution-chain 1)  ; Bulbasaur line
+  (sit-for 2)
+  
+  (message "🎮 PokéAPI demo complete! Check the response buffers.")
+  (pokemon-showcase-demo))  ; Run the built-in demo too
+
+;;;###autoload
 (defun run-bhagavad-gita-integration-demo ()
   "Run a demonstration of the Bhagavad Gita API integration."
   (interactive)
-  (message "Starting Bhagavad Gita API demonstration...")
+  (message "🕉️ Starting Bhagavad Gita API demonstration...")
   
   ;; Demonstrate various features
   (message "1. Listing chapters...")

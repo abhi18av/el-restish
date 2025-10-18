@@ -229,7 +229,7 @@ make compile
 
 ### Integration Tests
 
-The package includes comprehensive integration tests with real APIs:
+The package includes comprehensive integration tests with multiple real APIs:
 
 ```elisp
 ;; Load integration tests
@@ -241,9 +241,18 @@ M-x integration-test-environment-check
 ;; Run all integration tests
 M-x run-integration-tests
 
-;; Try the Bhagavad Gita API demo
+;; Comprehensive demo with all APIs
+M-x run-comprehensive-api-demo
+
+;; Individual API demos
+M-x run-pokemon-demo
 M-x run-bhagavad-gita-integration-demo
 ```
+
+Integration tests include:
+- **httpbin.org** - Basic HTTP functionality testing
+- **PokéAPI** - Complex JSON responses, no authentication
+- **Bhagavad Gita API** - Authentication with RapidAPI keys
 
 See `test/README.md` for detailed integration test documentation.
 

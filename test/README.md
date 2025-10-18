@@ -5,7 +5,8 @@ This directory contains integration tests and real-world examples for the el-res
 ## Files
 
 - `integration-test.el` - Main integration test suite
-- `bhagavad-gita-client.el` - Complete API client example using Bhagavad Gita API
+- `pokemon-client.el` - Complete PokéAPI client (no authentication required)
+- `bhagavad-gita-client.el` - Complete API client with RapidAPI authentication
 - `el-restish-tests.el` - Unit tests (ERT)
 
 ## Running Integration Tests
@@ -31,30 +32,99 @@ M-x run-integration-tests
 
 This runs a comprehensive test suite covering:
 
-- ✅ Basic HTTP requests (GET, POST)
-- ✅ JSON response formatting
+- ✅ Basic HTTP requests (GET, POST) with httpbin.org
+- ✅ Complex JSON response formatting with PokéAPI
+- ✅ Authentication handling with Bhagavad Gita API
 - ✅ Sync vs Async execution modes
-- ✅ Error handling
+- ✅ Error handling (404s, invalid data)
 - ✅ Client framework functionality
-- ✅ Real API integration (Bhagavad Gita)
+- ✅ Multi-API coordination
 
-### Bhagavad Gita API Demo
+### Comprehensive API Demo
 
 ```elisp
+M-x run-comprehensive-api-demo
+```
+
+This runs a complete showcase of el-restish with three different APIs:
+- **httpbin.org** - Basic HTTP testing (GET, POST)
+- **PokéAPI** - Complex JSON structures, no authentication
+- **Bhagavad Gita API** - Authentication with RapidAPI keys
+
+### Individual API Demos
+
+```elisp
+;; PokéAPI focused demo
+M-x run-pokemon-demo
+M-x pokemon-showcase-demo
+
+;; Bhagavad Gita API demo
 M-x run-bhagavad-gita-integration-demo
 ```
 
-This demonstrates the el-restish package with a real API, showing:
+## PokéAPI Client
 
-- API client creation using `el-restish-define-client`
-- Multiple endpoint calls
-- Response formatting and display
-- Error handling
-- Both sync and async modes
+The `pokemon-client.el` file provides a comprehensive client for the PokéAPI (https://pokeapi.co). This is perfect for testing because:
+
+- **No authentication required** - Great for basic testing
+- **Rich, complex JSON responses** - Tests formatting capabilities
+- **Multiple related endpoints** - Demonstrates client framework
+- **Reliable and fast** - Excellent for automated testing
+- **Fun and engaging content** - Makes testing enjoyable!
+
+### Available Pokémon Commands
+
+```elisp
+;; Core Pokémon data
+M-x pokemon-get                 ; Get any Pokémon by ID or name
+M-x pokemon-list                ; List Pokémon with pagination
+M-x pokemon-species             ; Get species information
+M-x pokemon-evolution-chain     ; Get evolution chains
+
+;; Type and generation exploration
+M-x pokemon-type                ; Get type information
+M-x pokemon-generation          ; Get generation data
+M-x pokemon-region              ; Get region information
+
+;; Game mechanics
+M-x pokemon-ability             ; Get ability information
+M-x pokemon-move                ; Get move details
+M-x pokemon-item                ; Get item information
+
+;; Convenience functions
+M-x pokemon-get-random          ; Random Pokémon discovery
+M-x pokemon-get-starter         ; Starter Pokémon for any generation
+M-x pokemon-search-by-type      ; Search Pokémon by type
+M-x pokemon-browse-generation   ; Interactive generation browser
+M-x pokemon-compare             ; Compare two Pokémon
+
+;; Demo and testing
+M-x pokemon-showcase-demo       ; Full feature demonstration
+M-x pokemon-run-integration-tests ; Test suite
+```
+
+### Pokémon Minor Mode
+
+Enable `pokemon-mode` for convenient keybindings:
+
+```elisp
+M-x pokemon-mode
+```
+
+Keybindings:
+- `C-c p g` - Get Pokémon
+- `C-c p l` - List Pokémon
+- `C-c p r` - Random Pokémon
+- `C-c p t` - Search by type
+- `C-c p s` - Species info
+- `C-c p e` - Evolution chain
+- `C-c p b` - Browse generations
+- `C-c p d` - Demo showcase
+- `C-c p T` - Run tests
 
 ## Bhagavad Gita API Client
 
-The `bhagavad-gita-client.el` file demonstrates how to build a complete API client using el-restish. It includes:
+The `bhagavad-gita-client.el` file demonstrates authentication and API key handling. It includes:
 
 ### Core Features
 
