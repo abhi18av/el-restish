@@ -139,6 +139,8 @@ el-restish includes a framework for building specialized API clients. This makes
 
 See `examples/example-client.el` for a complete example of building a specialized API client using el-restish.
 
+For a real-world integration example, check out `test/bhagavad-gita-client.el` which provides a complete API client for the Bhagavad Gita API with authentication, error handling, and comprehensive testing.
+
 ## Advanced Usage
 
 ### Synchronous vs Asynchronous
@@ -215,7 +217,7 @@ Planned features for future versions:
 ### Development
 
 ```bash
-# Run tests
+# Run unit tests
 make test
 
 # Lint code
@@ -224,6 +226,26 @@ make lint
 # Byte compile
 make compile
 ```
+
+### Integration Tests
+
+The package includes comprehensive integration tests with real APIs:
+
+```elisp
+;; Load integration tests
+(load-file "test/integration-test.el")
+
+;; Check environment
+M-x integration-test-environment-check
+
+;; Run all integration tests
+M-x run-integration-tests
+
+;; Try the Bhagavad Gita API demo
+M-x run-bhagavad-gita-integration-demo
+```
+
+See `test/README.md` for detailed integration test documentation.
 
 ## License
 
