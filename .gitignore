@@ -1,0 +1,32 @@
+# Compiled files
+*.elc
+
+# Cask
+.cask/
+dist/
+
+# Emacs temp files
+*~
+\#*\#
+.\#*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+
+# Build artifacts
+build/
+
+# IDE files
+.vscode/
+.idea/
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+*.temp
