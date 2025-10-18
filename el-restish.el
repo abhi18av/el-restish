@@ -64,12 +64,19 @@
 ;;;###autoload
 (defun el-restish-get (target &optional extra-args)
   "Execute a GET request to TARGET.
-With prefix argument, prompt for EXTRA-ARGS to append to the command."
+With prefix argument, prompt for EXTRA-ARGS to append to the command.
+With double prefix argument (C-u C-u), also toggle buffer display."
   (interactive
-   (list (read-string "Target: " nil 'el-restish-target-history)
-         (when current-prefix-arg
-           (read-string "Extra args: " nil 'el-restish-args-history))))
-  (el-restish-request "GET" target extra-args))
+   (let* ((double-prefix (equal current-prefix-arg '(16)))
+          (target (read-string "Target: " nil 'el-restish-target-history))
+          (extra-args (when (or current-prefix-arg double-prefix)
+                        (read-string "Extra args: " nil 'el-restish-args-history))))
+     (list target extra-args)))
+  (let ((el-restish-auto-display-buffer
+         (if (equal current-prefix-arg '(16))
+             (not el-restish-auto-display-buffer)
+           el-restish-auto-display-buffer)))
+    (el-restish-request "GET" target extra-args)))
 
 ;;;###autoload
 (defun el-restish-post (target &optional data extra-args)

@@ -55,6 +55,9 @@ M-x el-restish-post RET api.example.com/users RET
 
 ;; With extra arguments (use C-u prefix)
 C-u M-x el-restish-get RET api.example.com/users RET --verbose --timeout 30 RET
+
+;; Toggle buffer display (use C-u C-u prefix)
+C-u C-u M-x el-restish-get RET api.example.com/users RET
 ```
 
 ### Response Buffers
@@ -66,6 +69,23 @@ Response buffers use a special mode with these key bindings:
 - `s` - Toggle response formatting
 - `e` - Show the exact command that was executed
 - `r` - Show detailed request information
+
+### Buffer Display Control
+
+By default, el-restish automatically displays response buffers when requests complete. You can control this behavior:
+
+**Global Settings:**
+- `el-restish-auto-display-buffer` - Set to `nil` to disable automatic buffer display
+- `M-x el-restish-disable-auto-display` - Disable buffer display for all requests
+- `M-x el-restish-enable-auto-display` - Enable buffer display for all requests (default)
+- `M-x el-restish-toggle-auto-display` - Toggle the current setting
+
+**Per-Request Override:**
+- `C-u C-u M-x el-restish-get` - Temporarily toggle buffer display for this request only
+
+**Accessing Hidden Buffers:**
+- `M-x el-restish-pop-response` - View the most recent response buffer
+- Response buffers are always created and accessible via buffer list
 
 ### Configuration Discovery
 
@@ -87,6 +107,11 @@ M-x el-restish-set-global-args RET -f RET body RET
 
 ;; Set environment variables for all requests
 M-x el-restish-set-environment-variable RET NOCOLOR RET 1 RET
+
+;; Control buffer display behavior
+M-x el-restish-disable-auto-display RET  ; Don't show buffers automatically
+M-x el-restish-enable-auto-display RET   ; Show buffers automatically (default)
+M-x el-restish-toggle-auto-display RET   ; Toggle current setting
 
 ;; Show current configuration
 M-x el-restish-show-configuration RET

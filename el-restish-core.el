@@ -126,6 +126,13 @@ Example: \='((\"NOCOLOR\" . \"1\") (\"RESTISH_TIMEOUT\" . \"30\"))"
   :type '(alist :key-type string :value-type string)
   :group 'el-restish)
 
+(defcustom el-restish-auto-display-buffer t
+  "Whether to automatically display response buffers.
+When nil, response buffers are created but not displayed.
+You can use `el-restish-pop-response' to view the most recent response."
+  :type 'boolean
+  :group 'el-restish)
+
 ;; Internal variables
 
 (defvar el-restish--processes nil
@@ -347,7 +354,8 @@ Returns an `el-restish-result' struct with the results."
         (el-restish-response-mode)))
 
     (el-restish--add-response-buffer buffer)
-    (el-restish--display-response buffer)
+    (when el-restish-auto-display-buffer
+      (el-restish--display-response buffer))
     buffer))
 
 ;; Asynchronous execution
@@ -448,8 +456,9 @@ Returns the process object."
 (defun el-restish-request-async (method target options)
   "Execute an asynchronous restish request."
   (let ((process (el-restish-start-async method target
-                                         (plist-put options :display t))))
-    (el-restish--display-response (process-get process 'el-restish-buffer))
+                                         (plist-put options :display el-restish-auto-display-buffer))))
+    (when el-restish-auto-display-buffer
+      (el-restish--display-response (process-get process 'el-restish-buffer)))
     process))
 
 ;; Buffer management
@@ -561,6 +570,7 @@ Sets global args to include -f body and environment variable NOCOLOR=1."
       (insert (format "Executable: %s\n" (or el-restish-executable "auto-detected")))
       (insert (format "Default mode: %s\n" el-restish-default-mode))
       (insert (format "Auto-format: %s\n" el-restish-auto-format))
+      (insert (format "Auto-display buffer: %s\n" el-restish-auto-display-buffer))
       (insert (format "Debug logging: %s\n" el-restish-debug))
       (insert (format "Command printing: %s\n" (or el-restish-print-command "disabled")))
 
@@ -568,6 +578,31 @@ Sets global args to include -f body and environment variable NOCOLOR=1."
       (view-mode))
 
     (display-buffer config-buffer)))
+
+;;;###autoload
+(defun el-restish-enable-auto-display ()
+  "Enable automatic display of response buffers."
+  (interactive)
+  (setq el-restish-auto-display-buffer t)
+  (message "el-restish will now automatically display response buffers"))
+
+;;;###autoload
+(defun el-restish-disable-auto-display ()
+  "Disable automatic display of response buffers.
+
+Response buffers will still be created but not displayed.
+Use `el-restish-pop-response' to view the most recent response."
+  (interactive)
+  (setq el-restish-auto-display-buffer nil)
+  (message "el-restish will no longer automatically display response buffers"))
+
+;;;###autoload
+(defun el-restish-toggle-auto-display ()
+  "Toggle automatic display of response buffers."
+  (interactive)
+  (setq el-restish-auto-display-buffer (not el-restish-auto-display-buffer))
+  (message "el-restish auto-display: %s"
+           (if el-restish-auto-display-buffer "enabled" "disabled")))
 
 ;;;###autoload
 (defun el-restish-reset-configuration ()
@@ -579,7 +614,8 @@ Sets global args to include -f body and environment variable NOCOLOR=1."
           el-restish-get-default-args nil
           el-restish-post-default-args nil
           el-restish-put-default-args nil
-          el-restish-delete-default-args nil)
+          el-restish-delete-default-args nil
+          el-restish-auto-display-buffer t)
     (message "el-restish configuration reset to defaults")))
 
 (provide 'el-restish-core)
