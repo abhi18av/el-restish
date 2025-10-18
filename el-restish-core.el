@@ -104,8 +104,8 @@ Responses larger than this will skip pretty-printing for performance."
 
 (defcustom el-restish-print-command nil
   "Whether to print the final restish command before execution.
-When t, prints to minibuffer. When 'buffer, shows in a dedicated buffer.
-When 'both, does both."
+When t, prints to minibuffer. When `buffer', shows in a dedicated buffer.
+When `both', does both."
   :type '(choice (const :tag "Don't print" nil)
                  (const :tag "Print to minibuffer" t)
                  (const :tag "Show in buffer" buffer)
@@ -115,14 +115,14 @@ When 'both, does both."
 (defcustom el-restish-global-args nil
   "Global arguments to append to all restish commands.
 These are added after method-specific args but before extra args.
-Example: '("-f" "body" "--no-color")"
+Example: \='(\"-f\" \"body\" \"--no-color\")"
   :type '(repeat string)
   :group 'el-restish)
 
 (defcustom el-restish-environment-variables nil
   "Environment variables to set for all restish commands.
 This is an alist of (VARIABLE . VALUE) pairs.
-Example: '(("NOCOLOR" . "1") ("RESTISH_TIMEOUT" . "30"))"
+Example: \='((\"NOCOLOR\" . \"1\") (\"RESTISH_TIMEOUT\" . \"30\"))"
   :type '(alist :key-type string :value-type string)
   :group 'el-restish)
 
@@ -179,15 +179,15 @@ containing :headers, :params, :data, :json, :file, :extra-args, etc."
          (file-path (plist-get options :file))
          (extra-args (plist-get options :extra-args))
          (default-args (el-restish--get-default-args method)))
-    
+
     ;; Add headers
     (dolist (header headers)
       (setq argv (append argv (list "-H" (format "%s:%s" (car header) (cdr header))))))
-    
+
     ;; Add parameters
     (dolist (param params)
       (setq argv (append argv (list "--param" (format "%s=%s" (car param) (cdr param))))))
-    
+
     ;; Add data/body content
     (cond
      (json-data
@@ -198,19 +198,19 @@ containing :headers, :params, :data, :json, :file, :extra-args, etc."
         (setq argv (append argv (list "--data" data)))))
      (file-path
       (setq argv (append argv (list "--file" file-path)))))
-    
+
     ;; Add default args for this method
     (when default-args
       (setq argv (append argv default-args)))
-    
+
     ;; Add global args (applied to all requests)
     (when el-restish-global-args
       (setq argv (append argv el-restish-global-args)))
-    
+
     ;; Add extra args
     (when extra-args
       (setq argv (append argv extra-args)))
-    
+
     argv))
 
 ;; Command printing
@@ -221,17 +221,17 @@ ARGV is the command vector, METHOD and TARGET are for context."
   (when el-restish-print-command
     (let* ((command-str (mapconcat #'shell-quote-argument argv " "))
            (env-str (when el-restish-environment-variables
-                      (mapconcat (lambda (var) 
+                      (mapconcat (lambda (var)
                                    (format "%s=%s" (car var) (cdr var)))
                                  el-restish-environment-variables " ")))
            (full-command (if env-str
-                            (format "%s %s" env-str command-str)
-                          command-str)))
-      
+                             (format "%s %s" env-str command-str)
+                           command-str)))
+
       ;; Print to minibuffer
       (when (memq el-restish-print-command '(t both))
         (message "[el-restish] %s" full-command))
-      
+
       ;; Show in buffer
       (when (memq el-restish-print-command '(buffer both))
         (let ((buffer (get-buffer-create "*el-restish-commands*")))
@@ -240,17 +240,17 @@ ARGV is the command vector, METHOD and TARGET are for context."
             (unless (= (point-min) (point-max))
               (insert "\n"))
             (insert (format "[%s] %s %s\n"
-                           (format-time-string "%H:%M:%S")
-                           method
-                           target))
+                            (format-time-string "%H:%M:%S")
+                            method
+                            target))
             (insert (format "Command: %s\n" full-command))
             (when env-str
               (insert (format "Environment: %s\n" env-str)))
             ;; Show the buffer if it's not already visible
             (unless (get-buffer-window buffer)
               (display-buffer buffer '((display-buffer-at-bottom)
-                                      (window-height . 10)))))))
-      
+                                       (window-height . 10)))))))
+
       ;; Always log to debug if enabled
       (el-restish--log "Final command: %s" full-command))))
 
@@ -293,20 +293,20 @@ Returns an `el-restish-result' struct with the results."
          (stdout-buffer (generate-new-buffer " *el-restish-stdout*"))
          (process-environment (el-restish--setup-process-environment))
          exit-code)
-    
+
     (el-restish--print-command argv method target)
     (el-restish--log "Executing sync: %s" (mapconcat #'identity argv " "))
-    (el-restish--log "Environment: %s" 
+    (el-restish--log "Environment: %s"
                      (mapconcat (lambda (var) (format "%s=%s" (car var) (cdr var)))
-                               el-restish-environment-variables " "))
-    
+                                el-restish-environment-variables " "))
+
     (unwind-protect
         (progn
           (setq exit-code
                 (apply #'call-process
                        (car argv) nil (list stdout-buffer stderr-buffer) nil
                        (cdr argv)))
-          
+
           (make-el-restish-result
            :exit-code exit-code
            :stdout (with-current-buffer stdout-buffer (buffer-string))
@@ -314,7 +314,7 @@ Returns an `el-restish-result' struct with the results."
            :command argv
            :start-time start-time
            :end-time (current-time)))
-      
+
       (kill-buffer stderr-buffer)
       (kill-buffer stdout-buffer))))
 
@@ -323,7 +323,7 @@ Returns an `el-restish-result' struct with the results."
   (let* ((result (el-restish-call-sync method target options))
          (buffer-name (funcall el-restish-buffer-name-function method target))
          (buffer (get-buffer-create buffer-name)))
-    
+
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
         (erase-buffer)
@@ -331,9 +331,9 @@ Returns an `el-restish-result' struct with the results."
           (insert (format "Exit code: %d\n" (el-restish-result-exit-code result)))
           (when (not (string-empty-p (el-restish-result-stderr result)))
             (insert "STDERR:\n" (el-restish-result-stderr result) "\n\n")))
-        
+
         (insert (el-restish-result-stdout result))
-        
+
         ;; Store metadata
         (setq-local el-restish-method method)
         (setq-local el-restish-target target)
@@ -342,10 +342,10 @@ Returns an `el-restish-result' struct with the results."
         (setq-local el-restish-exit-code (el-restish-result-exit-code result))
         (setq-local el-restish-start-time (el-restish-result-start-time result))
         (setq-local el-restish-end-time (el-restish-result-end-time result))
-        
+
         (goto-char (point-min))
         (el-restish-response-mode)))
-    
+
     (el-restish--add-response-buffer buffer)
     (el-restish--display-response buffer)
     buffer))
@@ -360,45 +360,45 @@ Returns the process object."
          (buffer (get-buffer-create buffer-name))
          (start-time (current-time))
          process)
-    
+
     (el-restish--print-command argv method target)
     (el-restish--log "Starting async: %s" (mapconcat #'identity argv " "))
-    
+
     (with-current-buffer buffer
       (let ((inhibit-read-only t))
         (erase-buffer)
         (insert (format "Running: %s\n\n" (mapconcat #'identity argv " ")))
-        
+
         ;; Store metadata
         (setq-local el-restish-method method)
         (setq-local el-restish-target target)
         (setq-local el-restish-options options)
         (setq-local el-restish-command argv)
         (setq-local el-restish-start-time start-time)
-        
+
         (el-restish-response-mode)))
-    
-    (setq process
-          (make-process
-           :name "restish"
-           :buffer buffer
-           :command argv
-           :filter #'el-restish--async-filter
-           :sentinel #'el-restish--async-sentinel
-           :stderr (generate-new-buffer " *el-restish-stderr*")
-           :env (el-restish--setup-process-environment)))
-    
+
+    (let ((process-environment (el-restish--setup-process-environment)))
+      (setq process
+            (make-process
+             :name "restish"
+             :buffer buffer
+             :command argv
+             :filter #'el-restish--async-filter
+             :sentinel #'el-restish--async-sentinel
+             :stderr (generate-new-buffer " *el-restish-stderr*"))))
+
     (process-put process 'el-restish-buffer buffer)
     (process-put process 'el-restish-method method)
     (process-put process 'el-restish-target target)
     (process-put process 'el-restish-start-time start-time)
-    
+
     (push process el-restish--processes)
     (el-restish--add-response-buffer buffer)
-    
+
     (when (plist-get options :display)
       (el-restish--display-response buffer))
-    
+
     process))
 
 (defun el-restish--async-filter (process output)
@@ -414,15 +414,15 @@ Returns the process object."
   "Process sentinel for asynchronous restish commands."
   (let ((buffer (process-get process 'el-restish-buffer))
         (exit-code (process-exit-status process)))
-    
+
     (setq el-restish--processes (delq process el-restish--processes))
-    
+
     (when (buffer-live-p buffer)
       (with-current-buffer buffer
         (let ((inhibit-read-only t))
           (setq-local el-restish-exit-code exit-code)
           (setq-local el-restish-end-time (current-time))
-          
+
           ;; Add stderr if there was an error
           (when (and (> exit-code 0)
                      (process-get process 'stderr))
@@ -432,22 +432,22 @@ Returns the process object."
                   (goto-char (point-max))
                   (insert "\n--- STDERR ---\n")
                   (insert-buffer-substring stderr-buffer)))))
-          
+
           ;; Remove the "Running:" line
           (save-excursion
             (goto-char (point-min))
             (when (looking-at "Running: .*\n\n")
               (delete-region (match-beginning 0) (match-end 0))))
-          
+
           ;; Format and highlight the response
           (el-restish-format-and-highlight-buffer))))
-    
-    (el-restish--log "Process %s finished with exit code %d" 
+
+    (el-restish--log "Process %s finished with exit code %d"
                      (process-name process) exit-code)))
 
 (defun el-restish-request-async (method target options)
   "Execute an asynchronous restish request."
-  (let ((process (el-restish-start-async method target 
+  (let ((process (el-restish-start-async method target
                                          (plist-put options :display t))))
     (el-restish--display-response (process-get process 'el-restish-buffer))
     process))
@@ -456,7 +456,7 @@ Returns the process object."
 
 (defun el-restish--add-response-buffer (buffer)
   "Add BUFFER to the list of response buffers."
-  (setq el-restish--response-buffers 
+  (setq el-restish--response-buffers
         (cons buffer (delq buffer el-restish--response-buffers))))
 
 (defun el-restish--find-latest-response-buffer ()
@@ -476,7 +476,16 @@ Returns the process object."
 (defun el-restish-set-global-args (&rest args)
   "Set global arguments for all restish commands.
 ARGS should be strings representing command-line arguments.
-Example: (el-restish-set-global-args \"-f\" \"body\" \"--no-color\")"
+Example: (el-restish-set-global-args \"-f\" \"body\" \"--no-color\")
+When called interactively, prompts for a string of space-separated arguments."
+  (interactive (list (split-string-and-unquote 
+                      (read-string "Global args (space-separated): " 
+                                   (when el-restish-global-args
+                                     (mapconcat #'shell-quote-argument 
+                                               el-restish-global-args " "))))))
+  (when (called-interactively-p 'any)
+    ;; When called interactively, args is a list containing one list
+    (setq args (car args)))
   (setq el-restish-global-args args)
   (message "Global restish args set to: %s" (mapconcat #'identity args " ")))
 
@@ -487,7 +496,7 @@ ARG should be a string representing a command-line argument."
   (interactive "sAdd global argument: ")
   (unless (member arg el-restish-global-args)
     (setq el-restish-global-args (append el-restish-global-args (list arg)))
-    (message "Added global arg: %s. Current args: %s" 
+    (message "Added global arg: %s. Current args: %s"
              arg (mapconcat #'identity el-restish-global-args " "))))
 
 ;;;###autoload
@@ -526,14 +535,14 @@ Sets global args to include -f body and environment variable NOCOLOR=1."
     (with-current-buffer config-buffer
       (erase-buffer)
       (insert "# el-restish Configuration\n\n")
-      
+
       (insert "## Global Arguments\n")
       (if el-restish-global-args
           (progn
             (insert (format "Current: %s\n" (mapconcat #'identity el-restish-global-args " ")))
             (insert "\nThese arguments are added to every restish command.\n"))
         (insert "None set.\n"))
-      
+
       (insert "\n## Environment Variables\n")
       (if el-restish-environment-variables
           (progn
@@ -541,23 +550,23 @@ Sets global args to include -f body and environment variable NOCOLOR=1."
               (insert (format "%s=%s\n" (car var) (cdr var))))
             (insert "\nThese environment variables are set for every restish process.\n"))
         (insert "None set.\n"))
-      
+
       (insert "\n## Method-Specific Default Arguments\n")
       (insert (format "GET: %s\n" (or el-restish-get-default-args "none")))
       (insert (format "POST: %s\n" (or el-restish-post-default-args "none")))
       (insert (format "PUT: %s\n" (or el-restish-put-default-args "none")))
       (insert (format "DELETE: %s\n" (or el-restish-delete-default-args "none")))
-      
+
       (insert "\n## Other Settings\n")
       (insert (format "Executable: %s\n" (or el-restish-executable "auto-detected")))
       (insert (format "Default mode: %s\n" el-restish-default-mode))
       (insert (format "Auto-format: %s\n" el-restish-auto-format))
       (insert (format "Debug logging: %s\n" el-restish-debug))
       (insert (format "Command printing: %s\n" (or el-restish-print-command "disabled")))
-      
+
       (goto-char (point-min))
       (view-mode))
-    
+
     (display-buffer config-buffer)))
 
 ;;;###autoload

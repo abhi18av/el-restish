@@ -63,14 +63,14 @@ Key bindings:
   (interactive)
   (unless (derived-mode-p 'el-restish-response-mode)
     (user-error "Not in a restish response buffer"))
-  
+
   (let ((method (buffer-local-value 'el-restish-method (current-buffer)))
         (target (buffer-local-value 'el-restish-target (current-buffer)))
         (options (buffer-local-value 'el-restish-options (current-buffer))))
-    
+
     (unless (and method target)
       (user-error "Cannot rerun request: missing method or target"))
-    
+
     (if (eq el-restish-default-mode 'sync)
         (el-restish-request-sync method target options)
       (el-restish-request-async method target options))))
@@ -80,7 +80,7 @@ Key bindings:
   (interactive)
   (unless (derived-mode-p 'el-restish-response-mode)
     (user-error "Not in a restish response buffer"))
-  
+
   (let ((was-formatted (buffer-local-value 'el-restish-formatted (current-buffer))))
     (if was-formatted
         (el-restish-show-raw-response)
@@ -92,7 +92,7 @@ Key bindings:
   (interactive)
   (unless (derived-mode-p 'el-restish-response-mode)
     (user-error "Not in a restish response buffer"))
-  
+
   (let ((command (buffer-local-value 'el-restish-command (current-buffer))))
     (if command
         (let ((command-str (if (listp command)
@@ -114,7 +114,7 @@ Key bindings:
   (interactive)
   (unless (derived-mode-p 'el-restish-response-mode)
     (user-error "Not in a restish response buffer"))
-  
+
   (let* ((method (buffer-local-value 'el-restish-method (current-buffer)))
          (target (buffer-local-value 'el-restish-target (current-buffer)))
          (command (buffer-local-value 'el-restish-command (current-buffer)))
@@ -123,7 +123,7 @@ Key bindings:
          (end-time (buffer-local-value 'el-restish-end-time (current-buffer)))
          (elapsed (when (and start-time end-time)
                     (float-time (time-subtract end-time start-time)))))
-    
+
     (with-current-buffer (get-buffer-create "*el-restish-info*")
       (let ((inhibit-read-only t))
         (erase-buffer)
@@ -132,10 +132,10 @@ Key bindings:
         (when exit-code
           (insert (format "Exit Code: %d\n" exit-code)))
         (when start-time
-          (insert (format "Start Time: %s\n" 
+          (insert (format "Start Time: %s\n"
                           (format-time-string "%Y-%m-%d %H:%M:%S" start-time))))
         (when end-time
-          (insert (format "End Time: %s\n" 
+          (insert (format "End Time: %s\n"
                           (format-time-string "%Y-%m-%d %H:%M:%S" end-time))))
         (when elapsed
           (insert (format "Elapsed: %.3f seconds\n" elapsed)))
@@ -152,17 +152,17 @@ Key bindings:
   "Format and apply syntax highlighting to the current buffer."
   (unless (derived-mode-p 'el-restish-response-mode)
     (cl-return))
-  
+
   (let ((inhibit-read-only t)
         (original-point (point)))
-    
+
     ;; Skip formatting if buffer is too large
     (if (> (buffer-size) el-restish-format-max-bytes)
         (progn
           (message "Response too large (%d bytes), skipping formatting" (buffer-size))
           (el-restish-apply-syntax-highlighting)
           (setq-local el-restish-formatted 'skipped))
-      
+
       ;; Try to format the content
       (when el-restish-auto-format
         (save-excursion
@@ -171,10 +171,10 @@ Key bindings:
                  (format-success (el-restish-format-buffer content-type)))
             (when format-success
               (setq-local el-restish-formatted t)))))
-      
+
       ;; Apply syntax highlighting
       (el-restish-apply-syntax-highlighting))
-    
+
     (goto-char original-point)))
 
 (defun el-restish-apply-syntax-highlighting ()
@@ -182,7 +182,7 @@ Key bindings:
   (when el-restish-response-auto-highlight
     (let* ((content-type (el-restish--detect-content-type))
            (mode (el-restish--get-major-mode-for-type content-type)))
-      
+
       (when mode
         (let ((change-major-mode-hook nil)
               (after-change-major-mode-hook nil))
@@ -210,7 +210,7 @@ Key bindings:
   "Show the raw, unformatted response in the current buffer."
   (unless (derived-mode-p 'el-restish-response-mode)
     (user-error "Not in a restish response buffer"))
-  
+
   ;; For now, we don't store the original raw content separately
   ;; In a future version, we could store both formatted and raw versions
   (message "Raw response view not yet implemented. Use 'g' to rerun without formatting.")
