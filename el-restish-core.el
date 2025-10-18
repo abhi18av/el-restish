@@ -112,24 +112,31 @@ When `both', does both."
                  (const :tag "Both minibuffer and buffer" both))
   :group 'el-restish)
 
-(defcustom el-restish-global-args nil
+(defcustom el-restish-global-args '("-f" "body")
   "Global arguments to append to all restish commands.
 These are added after method-specific args but before extra args.
 Example: \='(\"-f\" \"body\" \"--no-color\")"
   :type '(repeat string)
   :group 'el-restish)
 
-(defcustom el-restish-environment-variables nil
+(defcustom el-restish-environment-variables '(("NOCOLOR" . "1"))
   "Environment variables to set for all restish commands.
 This is an alist of (VARIABLE . VALUE) pairs.
 Example: \='((\"NOCOLOR\" . \"1\") (\"RESTISH_TIMEOUT\" . \"30\"))"
   :type '(alist :key-type string :value-type string)
   :group 'el-restish)
 
-(defcustom el-restish-auto-display-buffer t
+(defcustom el-restish-auto-display-buffer nil
   "Whether to automatically display response buffers.
 When nil, response buffers are created but not displayed.
 You can use `el-restish-pop-response' to view the most recent response."
+  :type 'boolean
+  :group 'el-restish)
+
+(defcustom el-restish-minibuffer-preview t
+  "Whether to show a preview of the response in the minibuffer.
+This is especially useful when `el-restish-auto-display-buffer' is nil.
+Shows response status, content type, and first line of response body."
   :type 'boolean
   :group 'el-restish)
 
@@ -354,8 +361,9 @@ Returns an `el-restish-result' struct with the results."
         (el-restish-response-mode)))
 
     (el-restish--add-response-buffer buffer)
-    (when el-restish-auto-display-buffer
-      (el-restish--display-response buffer))
+    (if el-restish-auto-display-buffer
+        (el-restish--display-response buffer)
+      (el-restish--show-response-preview buffer))
     buffer))
 
 ;; Asynchronous execution
@@ -448,9 +456,13 @@ Returns the process object."
               (delete-region (match-beginning 0) (match-end 0))))
 
           ;; Format and highlight the response
-          (el-restish-format-and-highlight-buffer))))
-
-    (el-restish--log "Process %s finished with exit code %d"
+          (el-restish-format-and-highlight-buffer)
+          
+          ;; Show preview if buffer is not being displayed
+          (unless el-restish-auto-display-buffer
+            (el-restish--show-response-preview buffer)))))
+    
+    (el-restish--log "Process %s finished with exit code %d" 
                      (process-name process) exit-code)))
 
 (defun el-restish-request-async (method target options)
@@ -460,6 +472,52 @@ Returns the process object."
     (when el-restish-auto-display-buffer
       (el-restish--display-response (process-get process 'el-restish-buffer)))
     process))
+
+;; Minibuffer preview
+
+(defun el-restish--generate-response-preview (buffer)
+  "Generate a brief preview of the response in BUFFER for the minibuffer."
+  (when (and el-restish-minibuffer-preview (buffer-live-p buffer))
+    (with-current-buffer buffer
+      (let* ((exit-code (or (bound-and-true-p el-restish-exit-code) 0))
+             (status (if (= exit-code 0) "✓" (format "✗ (%d)" exit-code)))
+             (method (or (bound-and-true-p el-restish-method) "?"))
+             (target (or (bound-and-true-p el-restish-target) "?"))
+             (content-length (buffer-size))
+             (first-line ""))
+        
+        ;; Get the first line of content for preview
+        (save-excursion
+          (goto-char (point-min))
+          ;; Skip HTTP headers if present
+          (when (looking-at "^HTTP/[0-9.]+")
+            (when (re-search-forward "^\r?$" nil t)
+              (forward-line 1)))
+          ;; Get first non-empty line
+          (let ((line (string-trim (buffer-substring-no-properties
+                                   (point)
+                                   (line-end-position)))))
+            (when (not (string-empty-p line))
+              (setq first-line (if (> (length line) 50)
+                                   (concat (substring line 0 47) "...")
+                                 line)))))
+        
+        ;; Format the preview message
+        (format "[%s] %s %s (%d bytes)%s"
+                status
+                method
+                (if (> (length target) 30)
+                    (concat "..." (substring target -27))
+                  target)
+                content-length
+                (if (not (string-empty-p first-line))
+                    (format " — %s" first-line)
+                  ""))))))
+
+(defun el-restish--show-response-preview (buffer)
+  "Show a preview of the response in BUFFER in the minibuffer."
+  (when-let ((preview (el-restish--generate-response-preview buffer)))
+    (message "%s" preview)))
 
 ;; Buffer management
 
@@ -523,18 +581,31 @@ NAME and VALUE should be strings."
 ;;;###autoload
 (defun el-restish-configure-for-body-only ()
   "Configure el-restish to show only response bodies (no headers).
-Sets global args to include -f body and environment variable NOCOLOR=1."
+Sets global args to include -f body and environment variable NOCOLOR=1.
+Note: These are now the default settings."
   (interactive)
   (el-restish-set-global-args "-f" "body")
   (el-restish-set-environment-variable "NOCOLOR" "1")
-  (message "Configured el-restish for body-only output with no colors"))
+  (message "Configured el-restish for body-only output with no colors (already default)"))
+
+;;;###autoload
+(defun el-restish-configure-full-output ()
+  "Configure el-restish to show full HTTP responses with headers and colors.
+This overrides the default body-only, no-color configuration."
+  (interactive)
+  (el-restish-set-global-args)  ; Remove -f body
+  (setq el-restish-environment-variables
+        (delq (assoc "NOCOLOR" el-restish-environment-variables)
+              el-restish-environment-variables))
+  (message "Configured el-restish for full HTTP output with colors"))
 
 ;;;###autoload
 (defun el-restish-configure-no-color ()
-  "Configure el-restish to disable colored output."
+  "Configure el-restish to disable colored output.
+Note: This is already the default setting."
   (interactive)
   (el-restish-set-environment-variable "NOCOLOR" "1")
-  (message "Disabled colored output for restish"))
+  (message "Disabled colored output for restish (already default)"))
 
 ;;;###autoload
 (defun el-restish-show-configuration ()
@@ -571,6 +642,7 @@ Sets global args to include -f body and environment variable NOCOLOR=1."
       (insert (format "Default mode: %s\n" el-restish-default-mode))
       (insert (format "Auto-format: %s\n" el-restish-auto-format))
       (insert (format "Auto-display buffer: %s\n" el-restish-auto-display-buffer))
+      (insert (format "Minibuffer preview: %s\n" el-restish-minibuffer-preview))
       (insert (format "Debug logging: %s\n" el-restish-debug))
       (insert (format "Command printing: %s\n" (or el-restish-print-command "disabled")))
 
@@ -605,17 +677,40 @@ Use `el-restish-pop-response' to view the most recent response."
            (if el-restish-auto-display-buffer "enabled" "disabled")))
 
 ;;;###autoload
+(defun el-restish-enable-minibuffer-preview ()
+  "Enable minibuffer preview of responses."
+  (interactive)
+  (setq el-restish-minibuffer-preview t)
+  (message "el-restish minibuffer preview enabled"))
+
+;;;###autoload
+(defun el-restish-disable-minibuffer-preview ()
+  "Disable minibuffer preview of responses."
+  (interactive)
+  (setq el-restish-minibuffer-preview nil)
+  (message "el-restish minibuffer preview disabled"))
+
+;;;###autoload
+(defun el-restish-toggle-minibuffer-preview ()
+  "Toggle minibuffer preview of responses."
+  (interactive)
+  (setq el-restish-minibuffer-preview (not el-restish-minibuffer-preview))
+  (message "el-restish minibuffer preview: %s"
+           (if el-restish-minibuffer-preview "enabled" "disabled")))
+
+;;;###autoload
 (defun el-restish-reset-configuration ()
   "Reset all el-restish global configuration to defaults."
   (interactive)
   (when (yes-or-no-p "Reset all el-restish configuration to defaults? ")
-    (setq el-restish-global-args nil
-          el-restish-environment-variables nil
+    (setq el-restish-global-args '("-f" "body")
+          el-restish-environment-variables '(("NOCOLOR" . "1"))
           el-restish-get-default-args nil
           el-restish-post-default-args nil
           el-restish-put-default-args nil
           el-restish-delete-default-args nil
-          el-restish-auto-display-buffer t)
+          el-restish-auto-display-buffer nil
+          el-restish-minibuffer-preview t)
     (message "el-restish configuration reset to defaults")))
 
 (provide 'el-restish-core)

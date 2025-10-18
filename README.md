@@ -38,6 +38,20 @@ brew install restish
 
 ## Quick Start
 
+### Default Behavior
+
+el-restish is configured for a clean, minimal experience by default:
+
+- **No automatic buffer display** - Responses show as minibuffer previews
+- **Body-only responses** - No HTTP headers, just the response content (`-f body`)
+- **No colors** - Clean text output (`NOCOLOR=1`)
+- **Minibuffer previews** - See `[✓] GET api.com/users (150 bytes) — {"status": "ok"}` format
+
+To see full HTTP responses with headers and colors, use:
+```elisp
+M-x el-restish-configure-full-output
+```
+
 ### Basic Commands
 
 Execute HTTP requests directly from Emacs:
@@ -72,16 +86,23 @@ Response buffers use a special mode with these key bindings:
 
 ### Buffer Display Control
 
-By default, el-restish automatically displays response buffers when requests complete. You can control this behavior:
+By default, el-restish shows response previews in the minibuffer instead of opening new buffers. You can control this behavior:
 
 **Global Settings:**
-- `el-restish-auto-display-buffer` - Set to `nil` to disable automatic buffer display
-- `M-x el-restish-disable-auto-display` - Disable buffer display for all requests
-- `M-x el-restish-enable-auto-display` - Enable buffer display for all requests (default)
+- `el-restish-auto-display-buffer` - Set to `t` to enable automatic buffer display
+- `M-x el-restish-enable-auto-display` - Enable buffer display for all requests  
+- `M-x el-restish-disable-auto-display` - Disable buffer display (default)
 - `M-x el-restish-toggle-auto-display` - Toggle the current setting
 
 **Per-Request Override:**
 - `C-u C-u M-x el-restish-get` - Temporarily toggle buffer display for this request only
+
+**Minibuffer Preview (Default):**
+By default, el-restish shows a preview of the response in the minibuffer:
+- Format: `[✓] GET api.com/users (150 bytes) — {"status": "ok"}`
+- Shows: status, method, endpoint, size, and first line of response
+- Control with `el-restish-minibuffer-preview` variable (default: enabled)
+- `M-x el-restish-toggle-minibuffer-preview` - Toggle preview on/off
 
 **Accessing Hidden Buffers:**
 - `M-x el-restish-pop-response` - View the most recent response buffer
@@ -96,11 +117,11 @@ el-restish automatically loads configuration from `~/.config/restish/config.json
 Use these interactive functions for common configurations:
 
 ```elisp
-;; Configure to show only response bodies (no headers) and disable colors
-M-x el-restish-configure-for-body-only RET
+;; Configure for full HTTP responses with headers and colors
+M-x el-restish-configure-full-output RET
 
-;; Just disable colored output
-M-x el-restish-configure-no-color RET
+;; Configure to show only response bodies (no headers) and disable colors (default)
+M-x el-restish-configure-for-body-only RET
 
 ;; Add global arguments to all requests
 M-x el-restish-set-global-args RET -f RET body RET
@@ -109,9 +130,12 @@ M-x el-restish-set-global-args RET -f RET body RET
 M-x el-restish-set-environment-variable RET NOCOLOR RET 1 RET
 
 ;; Control buffer display behavior
-M-x el-restish-disable-auto-display RET  ; Don't show buffers automatically
-M-x el-restish-enable-auto-display RET   ; Show buffers automatically (default)
+M-x el-restish-enable-auto-display RET   ; Show buffers automatically
+M-x el-restish-disable-auto-display RET  ; Don't show buffers automatically (default)
 M-x el-restish-toggle-auto-display RET   ; Toggle current setting
+
+;; Control minibuffer preview (when buffers are hidden)
+M-x el-restish-toggle-minibuffer-preview RET  ; Toggle response previews
 
 ;; Show current configuration
 M-x el-restish-show-configuration RET
@@ -147,10 +171,10 @@ All settings can be customized via `M-x customize-group RET el-restish RET`:
 (setq el-restish-get-default-args '("--verbose"))
 (setq el-restish-post-default-args '("--json" "--verbose"))
 
-;; Global arguments applied to all requests
+;; Global arguments applied to all requests (default: body-only)
 (setq el-restish-global-args '("-f" "body"))
 
-;; Environment variables for all restish processes
+;; Environment variables for all restish processes (default: no colors)
 (setq el-restish-environment-variables '(("NOCOLOR" . "1") 
                                          ("RESTISH_TIMEOUT" . "30")))
 
