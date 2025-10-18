@@ -102,6 +102,30 @@ Responses larger than this will skip pretty-printing for performance."
   :type 'boolean
   :group 'el-restish)
 
+(defcustom el-restish-print-command nil
+  "Whether to print the final restish command before execution.
+When t, prints to minibuffer. When 'buffer, shows in a dedicated buffer.
+When 'both, does both."
+  :type '(choice (const :tag "Don't print" nil)
+                 (const :tag "Print to minibuffer" t)
+                 (const :tag "Show in buffer" buffer)
+                 (const :tag "Both minibuffer and buffer" both))
+  :group 'el-restish)
+
+(defcustom el-restish-global-args nil
+  "Global arguments to append to all restish commands.
+These are added after method-specific args but before extra args.
+Example: '("-f" "body" "--no-color")"
+  :type '(repeat string)
+  :group 'el-restish)
+
+(defcustom el-restish-environment-variables nil
+  "Environment variables to set for all restish commands.
+This is an alist of (VARIABLE . VALUE) pairs.
+Example: '(("NOCOLOR" . "1") ("RESTISH_TIMEOUT" . "30"))"
+  :type '(alist :key-type string :value-type string)
+  :group 'el-restish)
+
 ;; Internal variables
 
 (defvar el-restish--processes nil
@@ -179,11 +203,68 @@ containing :headers, :params, :data, :json, :file, :extra-args, etc."
     (when default-args
       (setq argv (append argv default-args)))
     
+    ;; Add global args (applied to all requests)
+    (when el-restish-global-args
+      (setq argv (append argv el-restish-global-args)))
+    
     ;; Add extra args
     (when extra-args
       (setq argv (append argv extra-args)))
     
     argv))
+
+;; Command printing
+
+(defun el-restish--print-command (argv method target)
+  "Print the final command according to `el-restish-print-command' setting.
+ARGV is the command vector, METHOD and TARGET are for context."
+  (when el-restish-print-command
+    (let* ((command-str (mapconcat #'shell-quote-argument argv " "))
+           (env-str (when el-restish-environment-variables
+                      (mapconcat (lambda (var) 
+                                   (format "%s=%s" (car var) (cdr var)))
+                                 el-restish-environment-variables " ")))
+           (full-command (if env-str
+                            (format "%s %s" env-str command-str)
+                          command-str)))
+      
+      ;; Print to minibuffer
+      (when (memq el-restish-print-command '(t both))
+        (message "[el-restish] %s" full-command))
+      
+      ;; Show in buffer
+      (when (memq el-restish-print-command '(buffer both))
+        (let ((buffer (get-buffer-create "*el-restish-commands*")))
+          (with-current-buffer buffer
+            (goto-char (point-max))
+            (unless (= (point-min) (point-max))
+              (insert "\n"))
+            (insert (format "[%s] %s %s\n"
+                           (format-time-string "%H:%M:%S")
+                           method
+                           target))
+            (insert (format "Command: %s\n" full-command))
+            (when env-str
+              (insert (format "Environment: %s\n" env-str)))
+            ;; Show the buffer if it's not already visible
+            (unless (get-buffer-window buffer)
+              (display-buffer buffer '((display-buffer-at-bottom)
+                                      (window-height . 10)))))))
+      
+      ;; Always log to debug if enabled
+      (el-restish--log "Final command: %s" full-command))))
+
+;; Environment setup
+
+(defun el-restish--setup-process-environment ()
+  "Set up process environment with custom variables.
+Returns a modified process-environment list."
+  (let ((env process-environment))
+    (dolist (var el-restish-environment-variables)
+      (let ((name (car var))
+            (value (cdr var)))
+        (setq env (cons (format "%s=%s" name value) env))))
+    env))
 
 ;; Logging
 
@@ -210,9 +291,14 @@ Returns an `el-restish-result' struct with the results."
          (start-time (current-time))
          (stderr-buffer (generate-new-buffer " *el-restish-stderr*"))
          (stdout-buffer (generate-new-buffer " *el-restish-stdout*"))
+         (process-environment (el-restish--setup-process-environment))
          exit-code)
     
+    (el-restish--print-command argv method target)
     (el-restish--log "Executing sync: %s" (mapconcat #'identity argv " "))
+    (el-restish--log "Environment: %s" 
+                     (mapconcat (lambda (var) (format "%s=%s" (car var) (cdr var)))
+                               el-restish-environment-variables " "))
     
     (unwind-protect
         (progn
@@ -275,6 +361,7 @@ Returns the process object."
          (start-time (current-time))
          process)
     
+    (el-restish--print-command argv method target)
     (el-restish--log "Starting async: %s" (mapconcat #'identity argv " "))
     
     (with-current-buffer buffer
@@ -298,7 +385,8 @@ Returns the process object."
            :command argv
            :filter #'el-restish--async-filter
            :sentinel #'el-restish--async-sentinel
-           :stderr (generate-new-buffer " *el-restish-stderr*")))
+           :stderr (generate-new-buffer " *el-restish-stderr*")
+           :env (el-restish--setup-process-environment)))
     
     (process-put process 'el-restish-buffer buffer)
     (process-put process 'el-restish-method method)
@@ -381,6 +469,109 @@ Returns the process object."
 (defun el-restish--display-response (buffer)
   "Display response BUFFER using the configured display action."
   (display-buffer buffer))
+
+;; Convenience functions for common configurations
+
+;;;###autoload
+(defun el-restish-set-global-args (&rest args)
+  "Set global arguments for all restish commands.
+ARGS should be strings representing command-line arguments.
+Example: (el-restish-set-global-args \"-f\" \"body\" \"--no-color\")"
+  (setq el-restish-global-args args)
+  (message "Global restish args set to: %s" (mapconcat #'identity args " ")))
+
+;;;###autoload
+(defun el-restish-add-global-arg (arg)
+  "Add a single global argument to restish commands.
+ARG should be a string representing a command-line argument."
+  (interactive "sAdd global argument: ")
+  (unless (member arg el-restish-global-args)
+    (setq el-restish-global-args (append el-restish-global-args (list arg)))
+    (message "Added global arg: %s. Current args: %s" 
+             arg (mapconcat #'identity el-restish-global-args " "))))
+
+;;;###autoload
+(defun el-restish-set-environment-variable (name value)
+  "Set an environment variable for all restish commands.
+NAME and VALUE should be strings."
+  (interactive "sEnvironment variable name: \nsValue: ")
+  (let ((existing (assoc name el-restish-environment-variables)))
+    (if existing
+        (setcdr existing value)
+      (setq el-restish-environment-variables
+            (cons (cons name value) el-restish-environment-variables)))
+    (message "Set environment variable %s=%s" name value)))
+
+;;;###autoload
+(defun el-restish-configure-for-body-only ()
+  "Configure el-restish to show only response bodies (no headers).
+Sets global args to include -f body and environment variable NOCOLOR=1."
+  (interactive)
+  (el-restish-set-global-args "-f" "body")
+  (el-restish-set-environment-variable "NOCOLOR" "1")
+  (message "Configured el-restish for body-only output with no colors"))
+
+;;;###autoload
+(defun el-restish-configure-no-color ()
+  "Configure el-restish to disable colored output."
+  (interactive)
+  (el-restish-set-environment-variable "NOCOLOR" "1")
+  (message "Disabled colored output for restish"))
+
+;;;###autoload
+(defun el-restish-show-configuration ()
+  "Show current el-restish global configuration."
+  (interactive)
+  (let ((config-buffer (get-buffer-create "*el-restish-configuration*")))
+    (with-current-buffer config-buffer
+      (erase-buffer)
+      (insert "# el-restish Configuration\n\n")
+      
+      (insert "## Global Arguments\n")
+      (if el-restish-global-args
+          (progn
+            (insert (format "Current: %s\n" (mapconcat #'identity el-restish-global-args " ")))
+            (insert "\nThese arguments are added to every restish command.\n"))
+        (insert "None set.\n"))
+      
+      (insert "\n## Environment Variables\n")
+      (if el-restish-environment-variables
+          (progn
+            (dolist (var el-restish-environment-variables)
+              (insert (format "%s=%s\n" (car var) (cdr var))))
+            (insert "\nThese environment variables are set for every restish process.\n"))
+        (insert "None set.\n"))
+      
+      (insert "\n## Method-Specific Default Arguments\n")
+      (insert (format "GET: %s\n" (or el-restish-get-default-args "none")))
+      (insert (format "POST: %s\n" (or el-restish-post-default-args "none")))
+      (insert (format "PUT: %s\n" (or el-restish-put-default-args "none")))
+      (insert (format "DELETE: %s\n" (or el-restish-delete-default-args "none")))
+      
+      (insert "\n## Other Settings\n")
+      (insert (format "Executable: %s\n" (or el-restish-executable "auto-detected")))
+      (insert (format "Default mode: %s\n" el-restish-default-mode))
+      (insert (format "Auto-format: %s\n" el-restish-auto-format))
+      (insert (format "Debug logging: %s\n" el-restish-debug))
+      (insert (format "Command printing: %s\n" (or el-restish-print-command "disabled")))
+      
+      (goto-char (point-min))
+      (view-mode))
+    
+    (display-buffer config-buffer)))
+
+;;;###autoload
+(defun el-restish-reset-configuration ()
+  "Reset all el-restish global configuration to defaults."
+  (interactive)
+  (when (yes-or-no-p "Reset all el-restish configuration to defaults? ")
+    (setq el-restish-global-args nil
+          el-restish-environment-variables nil
+          el-restish-get-default-args nil
+          el-restish-post-default-args nil
+          el-restish-put-default-args nil
+          el-restish-delete-default-args nil)
+    (message "el-restish configuration reset to defaults")))
 
 (provide 'el-restish-core)
 ;;; el-restish-core.el ends here

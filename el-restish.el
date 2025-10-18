@@ -36,6 +36,9 @@
 ;; - Configuration loading from ~/.config/restish/config.json
 ;; - Both sync and async execution modes
 ;; - Customizable per-method default arguments
+;; - Global arguments and environment variables for all requests
+;; - Command printing for debugging and reproducibility
+;; - Convenient configuration functions for common setups
 ;; - Generic client framework for extensions
 ;; - Response buffers with special mode for easy navigation
 

@@ -71,6 +71,30 @@ Response buffers use a special mode with these key bindings:
 
 el-restish automatically loads configuration from `~/.config/restish/config.json` if it exists. You can also set the `RESTISH_CONFIG` environment variable to specify a different location.
 
+### Quick Configuration
+
+Use these interactive functions for common configurations:
+
+```elisp
+;; Configure to show only response bodies (no headers) and disable colors
+M-x el-restish-configure-for-body-only RET
+
+;; Just disable colored output
+M-x el-restish-configure-no-color RET
+
+;; Add global arguments to all requests
+M-x el-restish-set-global-args RET -f RET body RET
+
+;; Set environment variables for all requests
+M-x el-restish-set-environment-variable RET NOCOLOR RET 1 RET
+
+;; Show current configuration
+M-x el-restish-show-configuration RET
+
+;; Reset all configuration to defaults
+M-x el-restish-reset-configuration RET
+```
+
 ## Configuration
 
 ### Customization
@@ -82,6 +106,9 @@ All settings can be customized via `M-x customize-group RET el-restish RET`:
 - **Syntax Highlighting**: Configure preferred modes for different content types
 - **Performance**: Set maximum response size for formatting
 - **Per-Method Defaults**: Set default arguments for GET, POST, PUT, DELETE
+- **Global Arguments**: Set arguments applied to all requests
+- **Environment Variables**: Set environment variables for all restish processes
+- **Command Printing**: Control whether to print executed commands for debugging
 
 ### Example Configuration
 
@@ -94,6 +121,16 @@ All settings can be customized via `M-x customize-group RET el-restish RET`:
 ;; Set default arguments for different methods
 (setq el-restish-get-default-args '("--verbose"))
 (setq el-restish-post-default-args '("--json" "--verbose"))
+
+;; Global arguments applied to all requests
+(setq el-restish-global-args '("-f" "body"))
+
+;; Environment variables for all restish processes
+(setq el-restish-environment-variables '(("NOCOLOR" . "1") 
+                                         ("RESTISH_TIMEOUT" . "30")))
+
+;; Command printing for debugging
+(setq el-restish-print-command 'both)          ; Print to minibuffer and buffer
 
 ;; Enable debug logging
 (setq el-restish-debug t)
@@ -189,12 +226,25 @@ C-u M-x el-restish-get RET api.example.com/users RET -H "Authorization: Bearer t
 
 ### Debug Mode
 
-Enable debug logging to troubleshoot issues:
+Enable debug logging and command printing to troubleshoot issues:
 
 ```elisp
-(setq el-restish-debug t)
+(setq el-restish-debug t)                    ; Enable debug logging
+(setq el-restish-print-command 'both)       ; Print commands to minibuffer and buffer
 ;; Check the *el-restish-log* buffer for detailed information
+;; Check the *el-restish-commands* buffer for executed commands
 ```
+
+#### Command Printing
+
+Control how executed commands are displayed:
+
+- `nil` - Don't print commands (default)
+- `t` - Print to minibuffer only
+- `'buffer` - Show in `*el-restish-commands*` buffer only  
+- `'both` - Both minibuffer and buffer
+
+Commands are printed with full environment variables and proper shell quoting, making it easy to reproduce issues manually.
 
 ## Roadmap (Version 2)
 

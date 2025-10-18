@@ -260,12 +260,23 @@ Example structure:
 
 ### Debug Mode
 
-Enable verbose logging:
+Enable verbose logging and command printing:
 ```elisp
-(setq el-restish-debug t)
+(setq el-restish-debug t)                    ; Enable debug logging
+(setq el-restish-print-command 'both)       ; Print commands to minibuffer and buffer
 ```
 
-This will log all requests to `*el-restish-log*` buffer.
+This will:
+- Log all requests to `*el-restish-log*` buffer
+- Print executed commands to `*el-restish-commands*` buffer
+- Show commands in minibuffer for immediate visibility
+
+#### Command Printing Benefits for Testing
+
+- **Reproducibility**: Copy exact commands to run manually
+- **Debugging**: See environment variables and full argument lists
+- **Learning**: Understand how el-restish translates requests to restish CLI calls
+- **Verification**: Confirm authentication headers and parameters are correct
 
 ## Contributing
 
