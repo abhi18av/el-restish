@@ -51,8 +51,11 @@ The function should accept METHOD and TARGET arguments and return a string."
   :type 'function
   :group 'el-restish)
 
-(defcustom el-restish-auto-format t
-  "Whether to automatically format response bodies."
+(defcustom el-restish-auto-format nil
+  "Whether to automatically format response bodies.
+
+WARNING: Auto-formatting can cause hanging with some JSON responses.
+Set to t to enable, or use `el-restish-toggle-format' (\='s\=') in response buffers."
   :type 'boolean
   :group 'el-restish)
 
@@ -62,8 +65,11 @@ Responses larger than this will skip pretty-printing for performance."
   :type 'integer
   :group 'el-restish)
 
-(defcustom el-restish-response-auto-highlight t
-  "Whether to automatically enable syntax highlighting in response buffers."
+(defcustom el-restish-response-auto-highlight nil
+  "Whether to automatically enable syntax highlighting in response buffers.
+
+WARNING: Auto-highlighting can cause issues with some major modes.
+Set to t to enable, or use `el-restish-toggle-format' (\='s\=') in response buffers."
   :type 'boolean
   :group 'el-restish)
 
@@ -126,7 +132,7 @@ Example: \='((\"NOCOLOR\" . \"1\") (\"RESTISH_TIMEOUT\" . \"30\"))"
   :type '(alist :key-type string :value-type string)
   :group 'el-restish)
 
-(defcustom el-restish-auto-display-buffer nil
+(defcustom el-restish-auto-display-buffer t
   "Whether to automatically display response buffers.
 When nil, response buffers are created but not displayed.
 You can use `el-restish-pop-response' to view the most recent response."
@@ -427,7 +433,7 @@ Returns the process object."
           (insert output))))))
 
 (defun el-restish--async-sentinel (process _event)
-  "Process sentinel for asynchronous restish commands."
+  "Process sentinel for asynchronous restish commands (minimal version for debugging)."
   (let ((buffer (process-get process 'el-restish-buffer))
         (exit-code (process-exit-status process)))
 
@@ -455,14 +461,16 @@ Returns the process object."
             (when (looking-at "Running: .*\n\n")
               (delete-region (match-beginning 0) (match-end 0))))
 
-          ;; Format and highlight the response
+          ;; Format and highlight the response (re-enabled with fix)
           (el-restish-format-and-highlight-buffer)
-          
+
           ;; Show preview if buffer is not being displayed
           (unless el-restish-auto-display-buffer
-            (el-restish--show-response-preview buffer)))))
-    
-    (el-restish--log "Process %s finished with exit code %d" 
+            (el-restish--show-response-preview buffer))
+
+          )))
+
+    (el-restish--log "Process %s finished with exit code %d"
                      (process-name process) exit-code)))
 
 (defun el-restish-request-async (method target options)
@@ -485,7 +493,7 @@ Returns the process object."
              (target (or (bound-and-true-p el-restish-target) "?"))
              (content-length (buffer-size))
              (first-line ""))
-        
+
         ;; Get the first line of content for preview
         (save-excursion
           (goto-char (point-min))
@@ -495,13 +503,13 @@ Returns the process object."
               (forward-line 1)))
           ;; Get first non-empty line
           (let ((line (string-trim (buffer-substring-no-properties
-                                   (point)
-                                   (line-end-position)))))
+                                    (point)
+                                    (line-end-position)))))
             (when (not (string-empty-p line))
               (setq first-line (if (> (length line) 50)
                                    (concat (substring line 0 47) "...")
                                  line)))))
-        
+
         ;; Format the preview message
         (format "[%s] %s %s (%d bytes)%s"
                 status
@@ -545,11 +553,11 @@ Returns the process object."
 ARGS should be strings representing command-line arguments.
 Example: (el-restish-set-global-args \"-f\" \"body\" \"--no-color\")
 When called interactively, prompts for a string of space-separated arguments."
-  (interactive (list (split-string-and-unquote 
-                      (read-string "Global args (space-separated): " 
+  (interactive (list (split-string-and-unquote
+                      (read-string "Global args (space-separated): "
                                    (when el-restish-global-args
-                                     (mapconcat #'shell-quote-argument 
-                                               el-restish-global-args " "))))))
+                                     (mapconcat #'shell-quote-argument
+                                                el-restish-global-args " "))))))
   (when (called-interactively-p 'any)
     ;; When called interactively, args is a list containing one list
     (setq args (car args)))
@@ -699,6 +707,28 @@ Use `el-restish-pop-response' to view the most recent response."
            (if el-restish-minibuffer-preview "enabled" "disabled")))
 
 ;;;###autoload
+(defun el-restish-enable-formatting ()
+  "Enable automatic response formatting and syntax highlighting.
+
+WARNING: This may cause hanging with some JSON responses.
+You can still manually format responses using \='s\=' in response buffers."
+  (interactive)
+  (setq el-restish-auto-format t
+        el-restish-response-auto-highlight t)
+  (message "el-restish formatting enabled (may cause hanging with some responses)"))
+
+;;;###autoload
+(defun el-restish-disable-formatting ()
+  "Disable automatic response formatting and syntax highlighting.
+
+This prevents hanging issues but responses won't be automatically formatted.
+You can still manually format responses using \='s\=' in response buffers."
+  (interactive)
+  (setq el-restish-auto-format nil
+        el-restish-response-auto-highlight nil)
+  (message "el-restish formatting disabled (prevents hanging issues)"))
+
+;;;###autoload
 (defun el-restish-reset-configuration ()
   "Reset all el-restish global configuration to defaults."
   (interactive)
@@ -709,8 +739,10 @@ Use `el-restish-pop-response' to view the most recent response."
           el-restish-post-default-args nil
           el-restish-put-default-args nil
           el-restish-delete-default-args nil
-          el-restish-auto-display-buffer nil
-          el-restish-minibuffer-preview t)
+          el-restish-auto-display-buffer t
+          el-restish-minibuffer-preview t
+          el-restish-auto-format nil
+          el-restish-response-auto-highlight nil)
     (message "el-restish configuration reset to defaults")))
 
 (provide 'el-restish-core)

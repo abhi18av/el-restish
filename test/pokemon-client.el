@@ -166,42 +166,42 @@ LIMIT defaults to 20, OFFSET defaults to 0."
   "Test basic PokéAPI functionality."
   (interactive)
   (message "Testing PokéAPI basic functionality...")
-  
+
   ;; Test 1: Get Pikachu (most famous Pokémon)
   (message "Test 1: Getting Pikachu...")
   (let ((pikachu-buffer (pokemon-get "pikachu")))
     (if pikachu-buffer
         (message "✓ Pikachu retrieved successfully")
       (message "✗ Failed to retrieve Pikachu")))
-  
+
   ;; Test 2: List first 10 Pokémon
   (message "Test 2: Listing first 10 Pokémon...")
   (let ((list-buffer (pokemon-list 10 0)))
     (if list-buffer
         (message "✓ Pokémon list retrieved successfully")
       (message "✗ Failed to retrieve Pokémon list")))
-  
+
   ;; Test 3: Get fire type info
   (message "Test 3: Getting fire type information...")
   (let ((fire-buffer (pokemon-type "fire")))
     (if fire-buffer
         (message "✓ Fire type information retrieved successfully")
       (message "✗ Failed to retrieve fire type information")))
-  
+
   ;; Test 4: Get random Pokémon
   (message "Test 4: Getting random Pokémon...")
   (let ((random-buffer (pokemon-get-random)))
     (if random-buffer
         (message "✓ Random Pokémon retrieved successfully")
       (message "✗ Failed to retrieve random Pokémon")))
-  
+
   (message "PokéAPI basic functionality test completed."))
 
 (defun pokemon-test-complex-data ()
   "Test PokéAPI with complex nested data structures."
   (interactive)
   (message "Testing complex data structures...")
-  
+
   ;; Test evolution chain (complex nested structure)
   (message "Test 1: Getting Eevee evolution chain...")
   (let ((evolution-buffer (pokemon-evolution-chain 67)))  ; Eevee's evolution chain
@@ -212,7 +212,7 @@ LIMIT defaults to 20, OFFSET defaults to 0."
               (message "✓ Complex evolution chain data retrieved and parsed")
             (message "✗ Evolution chain data incomplete")))
       (message "✗ Failed to retrieve evolution chain")))
-  
+
   ;; Test species data (rich text descriptions)
   (message "Test 2: Getting Charizard species info...")
   (let ((species-buffer (pokemon-species "charizard")))
@@ -223,14 +223,14 @@ LIMIT defaults to 20, OFFSET defaults to 0."
               (message "✓ Species data with descriptions retrieved")
             (message "✗ Species data incomplete")))
       (message "✗ Failed to retrieve species data")))
-  
+
   (message "Complex data structure test completed."))
 
 (defun pokemon-test-error-handling ()
   "Test error handling with invalid requests."
   (interactive)
   (message "Testing error handling...")
-  
+
   ;; Test invalid Pokémon ID
   (condition-case err
       (let ((buffer (pokemon-get "99999")))
@@ -243,7 +243,7 @@ LIMIT defaults to 20, OFFSET defaults to 0."
                 (message "? Unexpected response for invalid ID")))
           (message "✓ Invalid Pokémon ID handled correctly")))
     (error (message "✓ Invalid ID error caught: %s" (error-message-string err))))
-  
+
   ;; Test invalid type
   (condition-case err
       (let ((buffer (pokemon-type "invalid-type")))
@@ -251,18 +251,18 @@ LIMIT defaults to 20, OFFSET defaults to 0."
             (message "✓ Invalid type request handled")
           (message "✓ Invalid type rejected")))
     (error (message "✓ Invalid type error caught: %s" (error-message-string err))))
-  
+
   (message "Error handling test completed."))
 
 (defun pokemon-test-performance ()
   "Test performance with multiple requests."
   (interactive)
   (message "Testing performance with multiple requests...")
-  
+
   (let ((start-time (current-time))
         (success-count 0)
         (total-requests 5))
-    
+
     ;; Make multiple async requests
     (dotimes (i total-requests)
       (let ((pokemon-id (+ 1 i)))
@@ -271,14 +271,14 @@ LIMIT defaults to 20, OFFSET defaults to 0."
               (pokemon-get pokemon-id)
               (setq success-count (1+ success-count)))
           (error nil))))
-    
+
     ;; Wait for async requests to complete
     (sit-for 3)
-    
+
     (let ((elapsed (float-time (time-subtract (current-time) start-time))))
       (message "Performance test: %d/%d requests succeeded in %.2f seconds"
                success-count total-requests elapsed))
-    
+
     (> success-count 0)))
 
 (defun pokemon-run-integration-tests ()
@@ -302,34 +302,34 @@ LIMIT defaults to 20, OFFSET defaults to 0."
   "Run a showcase demo of PokéAPI integration."
   (interactive)
   (message "🎮 Starting PokéAPI Showcase Demo...")
-  
+
   ;; Demo 1: Classic starter Pokémon
   (message "1. Getting classic Kanto starters...")
   (pokemon-get "pikachu")  ; Most famous Pokémon
   (sit-for 2)
   (pokemon-get "charizard")  ; Most popular starter evolution
   (sit-for 2)
-  
+
   ;; Demo 2: Type effectiveness
   (message "2. Exploring type effectiveness...")
   (pokemon-search-by-type "dragon")
   (sit-for 2)
-  
+
   ;; Demo 3: Generation exploration
   (message "3. Exploring generations...")
   (pokemon-generation 1)  ; Original generation
   (sit-for 2)
-  
+
   ;; Demo 4: Complex evolution chains
   (message "4. Complex evolution chains...")
   (pokemon-evolution-chain 67)  ; Eevee - has 8 evolutions!
   (sit-for 2)
-  
+
   ;; Demo 5: Random discovery
   (message "5. Random Pokémon discovery...")
   (pokemon-get-random)
   (sit-for 2)
-  
+
   (message "🎮 PokéAPI Showcase complete!")
   (message "Use M-x el-restish-pop-response to explore the responses.")
   (message "Try M-x pokemon-browse-generation for interactive exploration!"))

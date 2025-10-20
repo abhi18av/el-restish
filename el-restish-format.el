@@ -44,9 +44,14 @@ Returns a symbol: \='json, \='xml, or \='unknown."
      
      ;; Try to parse as JSON even if it doesn't start with { or [
      ((condition-case nil
-          (progn
-            (json-parse-buffer :object-type 'hash-table)
-            t)
+          (save-excursion
+            (save-restriction
+              (let ((content (buffer-string)))
+                (with-temp-buffer
+                  (insert content)
+                  (goto-char (point-min))
+                  (json-parse-buffer :object-type 'hash-table)
+                  t))))
         (error nil))
       'json)
      
