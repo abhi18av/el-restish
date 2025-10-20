@@ -58,8 +58,8 @@ OPTIONS is a plist of additional request options."
          (base-path (el-restish-client-base-path client))
          (target (if service
                      (if base-path
-                         (format "%s%s" service (if (string-prefix-p "/" path) path (concat "/" path)))
-                       (format "%s/%s" service path))
+                         (format "%s%s%s" service base-path (if (string-prefix-p "/" path) path (concat "/" path)))
+                       (format "%s%s" service (if (string-prefix-p "/" path) path (concat "/" path))))
                    path))
          (headers (append (el-restish-client-default-headers client)
                           (plist-get options :headers)))
