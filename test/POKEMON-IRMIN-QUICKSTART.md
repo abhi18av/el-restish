@@ -12,7 +12,7 @@ Test the Pokémon API client with Irmin backup integration interactively in Emac
 (add-to-list 'load-path "/Users/abhinavsharma/projects/el-restish")
 
 ;; Load the client
-(load-file "/Users/abhinavsharma/projects/el-restish/pokemon-irmin-client.el")
+(load-file "/Users/abhinavsharma/projects/el-restish/test/pokemon-irmin-client.el")
 ```
 
 ### 2. Initialize the Client

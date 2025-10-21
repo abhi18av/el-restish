@@ -105,34 +105,34 @@
 (defun pokemon-irmin-init ()
   "Initialize Pokémon Irmin client with local storage."
   (interactive)
-  
+
   (unless pokemon-irmin--initialized
     (message "Initializing Pokémon Irmin client...")
-    
+
     ;; Check if el-irmin modules are available
     (if (and (featurep 'el-irmin-foundation)
              (featurep 'el-irmin-restish))
         (pokemon-irmin--init-with-irmin)
       (pokemon-irmin--init-without-irmin))
-    
+
     ;; Load collection from storage
     (pokemon-irmin--load-collection)
-    
+
     (setq pokemon-irmin--initialized t)
     (message "Pokémon Irmin client initialized! Use M-x pokemon-irmin-catch to start.")))
 
 (defun pokemon-irmin--init-with-irmin ()
   "Initialize with full Irmin integration."
   (message "Initializing with Irmin backup support...")
-  
+
   ;; Initialize Irmin store
   (unless el-irmin--current-store
     (el-irmin-init-store pokemon-irmin-store-dir))
-  
+
   ;; Enable el-restish backend
   (when (fboundp 'el-irmin-restish-enable)
     (el-irmin-restish-enable))
-  
+
   ;; Register Pokémon package with foundation
   (when (fboundp 'el-irmin-foundation-register-package)
     (el-irmin-foundation-register-package
@@ -148,7 +148,7 @@
              :rate-limit 10
              :index-fields '("id" "name" "height" "weight")
              :transform-fn #'pokemon-irmin--transform-pokemon-data)
-            
+
             ;; Species endpoint
             (make-el-irmin-foundation-api
              :name "species"
@@ -157,7 +157,7 @@
              :cache-ttl pokemon-irmin-cache-ttl
              :rate-limit 10
              :index-fields '("id" "name" "generation"))
-            
+
             ;; Types endpoint
             (make-el-irmin-foundation-api
              :name "types"
@@ -165,7 +165,7 @@
              :sync-strategy 'on-demand
              :cache-ttl (* 24 3600)  ; Types change rarely
              :rate-limit 5)
-            
+
             ;; Generations endpoint
             (make-el-irmin-foundation-api
              :name "generations"
@@ -173,7 +173,7 @@
              :sync-strategy 'on-demand
              :cache-ttl (* 24 3600)  ; Generations never change
              :rate-limit 5))))
-  
+
   (message "Pokémon data will be backed up with Git versioning!"))
 
 (defun pokemon-irmin--init-without-irmin ()
@@ -183,7 +183,7 @@
 
 (defun pokemon-irmin--transform-pokemon-data (data)
   "Transform raw Pokémon DATA for storage."
-  (let ((parsed (if (stringp data) 
+  (let ((parsed (if (stringp data)
                     (json-parse-string data :object-type 'alist)
                   data)))
     ;; Extract only essential fields to save space
@@ -203,25 +203,25 @@
   (let ((url (if (string-prefix-p "http" endpoint)
                  endpoint
                (concat pokemon-irmin-base-url endpoint))))
-    
+
     ;; Try to get from cache first if Irmin is available
     (when (and use-cache (featurep 'el-irmin-foundation))
       (let ((cached (pokemon-irmin--get-from-cache endpoint)))
         (when cached
           (message "Retrieved from local cache: %s" endpoint)
           (cl-return-from pokemon-irmin--fetch cached))))
-    
+
     ;; Fetch from API
     (condition-case err
         (let* ((response (shell-command-to-string
                           (format "curl -s '%s'" url)))
                (data (json-parse-string response :object-type 'alist)))
-          
+
           ;; Store in Irmin if available
           (when (and pokemon-irmin-auto-sync
                      (featurep 'el-irmin-foundation))
             (pokemon-irmin--store-in-cache endpoint data))
-          
+
           data)
       (error
        (message "Failed to fetch from %s: %s" url (error-message-string err))
@@ -243,7 +243,7 @@
 
 (defun pokemon-irmin--endpoint-to-key (endpoint)
   "Convert ENDPOINT to cache key."
-  (replace-regexp-in-string "/" "-" 
+  (replace-regexp-in-string "/" "-"
                             (replace-regexp-in-string "^/+" "" endpoint)))
 
 ;;; Main Interactive Functions
@@ -252,34 +252,34 @@
 (defun pokemon-irmin-catch (pokemon-name-or-id)
   "Catch (fetch and store) a Pokémon by POKEMON-NAME-OR-ID."
   (interactive "sPokémon name or ID: ")
-  
+
   (unless pokemon-irmin--initialized
     (pokemon-irmin-init))
-  
+
   (message "Catching %s..." pokemon-name-or-id)
-  
+
   (let* ((endpoint (format "/pokemon/%s/" pokemon-name-or-id))
          (data (pokemon-irmin--fetch endpoint t)))
-    
+
     (if data
         (progn
           (let ((name (alist-get 'name data))
                 (id (alist-get 'id data))
                 (types (mapcar (lambda (type-entry)
-                                (alist-get 'name (alist-get 'type type-entry)))
-                              (alist-get 'types data)))
+                                 (alist-get 'name (alist-get 'type type-entry)))
+                               (alist-get 'types data)))
                 (height (alist-get 'height data))
                 (weight (alist-get 'weight data)))
-            
+
             ;; Add to collection
             (pokemon-irmin--add-to-collection name)
-            
+
             ;; Update stats
             (cl-incf (plist-get pokemon-irmin--stats :caught))
-            
+
             ;; Display in nice buffer
             (pokemon-irmin--display-pokemon data)
-            
+
             (message "Caught %s (#%d)! Type: %s | Height: %d | Weight: %d"
                      name id (string-join types ", ") height weight)))
       (message "Failed to catch %s" pokemon-name-or-id))))
@@ -296,14 +296,14 @@
 (defun pokemon-irmin-list-collection ()
   "List all caught Pokémon in your collection."
   (interactive)
-  
+
   (unless pokemon-irmin--initialized
     (pokemon-irmin-init))
-  
+
   (if (null pokemon-irmin--collection)
       (message "No Pokémon caught yet! Use M-x pokemon-irmin-catch to start.")
     (with-output-to-temp-buffer "*Pokémon Collection*"
-      (princ (format "🎮 Your Pokémon Collection (%d caught)\n" 
+      (princ (format "🎮 Your Pokémon Collection (%d caught)\n"
                      (length pokemon-irmin--collection)))
       (princ "=====================================\n\n")
       (dolist (pokemon (reverse pokemon-irmin--collection))
@@ -318,15 +318,15 @@
   "View all Pokémon of TYPE-NAME."
   (interactive
    (list (completing-read "Pokémon type: " pokemon-irmin-types nil t)))
-  
+
   (unless pokemon-irmin--initialized
     (pokemon-irmin-init))
-  
+
   (message "Exploring %s-type Pokémon..." type-name)
-  
+
   (let* ((endpoint (format "/type/%s/" type-name))
          (data (pokemon-irmin--fetch endpoint t)))
-    
+
     (if data
         (progn
           (cl-incf (plist-get pokemon-irmin--stats :types-explored))
@@ -338,18 +338,18 @@
   "View Pokémon from GENERATION-NUM (1-9)."
   (interactive
    (list (read-number "Generation (1-9): " pokemon-irmin-favorite-generation)))
-  
+
   (unless (and (>= generation-num 1) (<= generation-num 9))
     (user-error "Generation must be between 1 and 9"))
-  
+
   (unless pokemon-irmin--initialized
     (pokemon-irmin-init))
-  
+
   (message "Exploring Generation %d..." generation-num)
-  
+
   (let* ((endpoint (format "/generation/%d/" generation-num))
          (data (pokemon-irmin--fetch endpoint t)))
-    
+
     (if data
         (progn
           (cl-incf (plist-get pokemon-irmin--stats :generations-browsed))
@@ -360,15 +360,15 @@
 (defun pokemon-irmin-view-species (species-name)
   "View detailed species information for SPECIES-NAME."
   (interactive "sSpecies name: ")
-  
+
   (unless pokemon-irmin--initialized
     (pokemon-irmin-init))
-  
+
   (message "Fetching species info for %s..." species-name)
-  
+
   (let* ((endpoint (format "/pokemon-species/%s/" species-name))
          (data (pokemon-irmin--fetch endpoint t)))
-    
+
     (if data
         (progn
           (cl-incf (plist-get pokemon-irmin--stats :species-seen))
@@ -380,7 +380,7 @@
   "Catch all starter Pokémon from GENERATION."
   (interactive
    (list (read-number "Generation (1-9): " pokemon-irmin-favorite-generation)))
-  
+
   (let ((starters (pcase generation
                     (1 '("bulbasaur" "charmander" "squirtle"))
                     (2 '("chikorita" "cyndaquil" "totodile"))
@@ -392,7 +392,7 @@
                     (8 '("grookey" "scorbunny" "sobble"))
                     (9 '("sprigatito" "fuecoco" "quaxly"))
                     (_ (user-error "Invalid generation")))))
-    
+
     (message "Catching Generation %d starters..." generation)
     (dolist (starter starters)
       (pokemon-irmin-catch starter)
@@ -410,58 +410,58 @@
         (types (alist-get 'types data))
         (abilities (alist-get 'abilities data))
         (stats (alist-get 'stats data)))
-    
+
     (with-output-to-temp-buffer (format "*Pokémon: %s*" (capitalize name))
       (princ (format "🎮 %s (#%d)\n" (upcase name) id))
       (princ "==============================\n\n")
-      
+
       (princ (format "Height: %d decimetres (%.1f m)\n" height (/ height 10.0)))
       (princ (format "Weight: %d hectograms (%.1f kg)\n\n" weight (/ weight 10.0)))
-      
+
       (princ "Types:\n")
       (dolist (type-entry types)
         (let ((type-name (alist-get 'name (alist-get 'type type-entry))))
           (princ (format "  • %s\n" type-name))))
-      
+
       (princ "\nAbilities:\n")
       (dolist (ability-entry abilities)
         (let ((ability-name (alist-get 'name (alist-get 'ability ability-entry)))
               (is-hidden (eq (alist-get 'is_hidden ability-entry) t)))
-          (princ (format "  • %s%s\n" ability-name 
-                        (if is-hidden " (Hidden)" "")))))
-      
+          (princ (format "  • %s%s\n" ability-name
+                         (if is-hidden " (Hidden)" "")))))
+
       (princ "\nBase Stats:\n")
       (dolist (stat-entry stats)
         (let ((stat-name (alist-get 'name (alist-get 'stat stat-entry)))
               (base-value (alist-get 'base_stat stat-entry)))
-          (princ (format "  %-20s %3d  %s\n" 
-                        stat-name base-value
-                        (make-string (/ base-value 5) ?█))))))))
+          (princ (format "  %-20s %3d  %s\n"
+                         stat-name base-value
+                         (make-string (/ base-value 5) ?█))))))))
 
 (defun pokemon-irmin--display-type-info (data)
   "Display type information from DATA."
   (let ((name (alist-get 'name data))
         (pokemon-list (alist-get 'pokemon data))
         (damage-relations (alist-get 'damage_relations data)))
-    
+
     (with-output-to-temp-buffer (format "*Type: %s*" (capitalize name))
       (princ (format "🎮 %s-Type Pokémon\n" (upcase name)))
       (princ "==============================\n\n")
-      
+
       (princ (format "Total Pokémon: %d\n\n" (length pokemon-list)))
-      
+
       (when damage-relations
         (princ "Damage Relations:\n")
         (princ (format "  Double damage to: %s\n"
-                      (mapconcat (lambda (t) (alist-get 'name t))
-                                (alist-get 'double_damage_to damage-relations)
-                                ", ")))
+                       (mapconcat (lambda (t) (alist-get 'name t))
+                                  (alist-get 'double_damage_to damage-relations)
+                                  ", ")))
         (princ (format "  Double damage from: %s\n"
-                      (mapconcat (lambda (t) (alist-get 'name t))
-                                (alist-get 'double_damage_from damage-relations)
-                                ", ")))
+                       (mapconcat (lambda (t) (alist-get 'name t))
+                                  (alist-get 'double_damage_from damage-relations)
+                                  ", ")))
         (princ "\n"))
-      
+
       (princ "Pokémon of this type (first 20):\n")
       (cl-loop for poke-entry in pokemon-list
                for i from 1 to 20
@@ -474,13 +474,13 @@
         (id (alist-get 'id data))
         (main-region (alist-get 'name (alist-get 'main_region data)))
         (pokemon-species (alist-get 'pokemon_species data)))
-    
+
     (with-output-to-temp-buffer (format "*Generation %d*" id)
       (princ (format "🎮 Generation %d: %s\n" id (capitalize name)))
       (princ "==============================\n\n")
       (princ (format "Main Region: %s\n" (capitalize main-region)))
       (princ (format "Total Species: %d\n\n" (length pokemon-species)))
-      
+
       (princ "Pokémon Species:\n")
       (cl-loop for species-entry in pokemon-species
                for i from 1
@@ -495,7 +495,7 @@
         (flavor-texts (alist-get 'flavor_text_entries data))
         (is-legendary (eq (alist-get 'is_legendary data) t))
         (is-mythical (eq (alist-get 'is_mythical data) t)))
-    
+
     (with-output-to-temp-buffer (format "*Species: %s*" (capitalize name))
       (princ (format "🎮 %s (#%d)\n" (upcase name) id))
       (princ "==============================\n\n")
@@ -504,7 +504,7 @@
       (when is-mythical (princ "✨ MYTHICAL\n"))
       (princ "\nDescription:\n")
       (when flavor-texts
-        (let ((english-text (cl-find-if 
+        (let ((english-text (cl-find-if
                              (lambda (entry)
                                (string= "en" (alist-get 'name (alist-get 'language entry))))
                              flavor-texts)))
@@ -545,11 +545,11 @@
 (defun pokemon-irmin-search-by-name (name-pattern)
   "Search caught Pokémon by NAME-PATTERN."
   (interactive "sSearch name: ")
-  
+
   (unless pokemon-irmin--initialized
     (pokemon-irmin-init))
-  
-  (let ((matches (cl-remove-if-not 
+
+  (let ((matches (cl-remove-if-not
                   (lambda (name) (string-match-p name-pattern name))
                   pokemon-irmin--collection)))
     (if matches
@@ -560,10 +560,10 @@
 (defun pokemon-irmin-stats ()
   "Display Pokémon collection statistics."
   (interactive)
-  
+
   (unless pokemon-irmin--initialized
     (pokemon-irmin-init))
-  
+
   (message "📊 Pokémon Stats: Caught: %d | Species: %d | Types: %d | Generations: %d"
            (plist-get pokemon-irmin--stats :caught)
            (plist-get pokemon-irmin--stats :species-seen)
@@ -576,38 +576,38 @@
 (defun pokemon-irmin-demo ()
   "Run an interactive demo of Pokémon Irmin client."
   (interactive)
-  
+
   (message "🎮 Starting Pokémon Irmin Demo...")
-  
+
   (unless pokemon-irmin--initialized
     (pokemon-irmin-init))
-  
+
   (sit-for 1)
-  
+
   ;; Demo 1: Catch famous Pokémon
   (message "1. Catching Pikachu...")
   (pokemon-irmin-catch "pikachu")
   (sit-for 2)
-  
+
   ;; Demo 2: Catch legendary
   (message "2. Catching Mewtwo (Legendary)...")
   (pokemon-irmin-catch "mewtwo")
   (sit-for 2)
-  
+
   ;; Demo 3: Explore a type
   (message "3. Exploring Dragon-type...")
   (pokemon-irmin-view-type "dragon")
   (sit-for 2)
-  
+
   ;; Demo 4: Random catch
   (message "4. Catching random Pokémon...")
   (pokemon-irmin-catch-random)
   (sit-for 2)
-  
+
   ;; Demo 5: Show collection
   (message "5. Viewing collection...")
   (pokemon-irmin-list-collection)
-  
+
   (message "🎮 Demo complete! Your Pokémon data is backed up with Git versioning."))
 
 ;;; Minor Mode
